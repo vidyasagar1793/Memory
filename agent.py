@@ -17,19 +17,31 @@ REACT_SYSTEM_PROMPT = """You are a logical reasoning agent. You solve problems b
 You have access to the following tools:
 {tool_descriptions}
 
-Use the following format strictly:
-Question: the input question you must answer
-Thought: you should always think about what to do next
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
+CRITICAL RULES:
+1. If you do not have the information in your context, you MUST use a tool. Do NOT answer from imagination or say data is missing without searching first.
+2. Follow this EXACT format:
+
+Question: the input question
+Thought: analyze what information is missing
+Action: the action to take, must be one of [{tool_names}]
+Action Input: the tool argument
+Observation: result of the action
+... (repeat Thought/Action/Action Input/Observation if needed)
+Thought: I now have the answer
+Final Answer: the final answer
+
+--- EXAMPLE OF CORRECT TOOL USE ---
+Question: What is the server port for DB2?
+Thought: I need to find the server port for DB2 in long-term memory.
+Action: SearchMemory
+Action Input: DB2 server port
+Observation: [Memory Fragment 1]: DB2 server runs on port 50000.
+Thought: I now know the port number.
+Final Answer: The server port for DB2 is 50000.
+--- END EXAMPLE ---
 
 Begin!
 """
-
 
 class Tool:
     """A standard wrapper for a function the agent can use."""
@@ -75,7 +87,7 @@ def calculator(expression: str) -> int | float:
 
 
 class ReActAgent:
-    def __init__(self, tools: List[Tool], max_iterations: int = 5, model: str = "Qwen/Qwen2.5-7B-Instruct"):
+    def __init__(self, tools: List[Tool], max_iterations: int = 5, model: str = "meta-llama/Llama-3.3-70B-Instruct"):
         self.tools = {tool.name: tool for tool in tools}
         self.max_iterations = max_iterations
         self.model = model
@@ -101,30 +113,50 @@ class ReActAgent:
     def run(self, user_query: str) -> str:
         self.memory.clear()
         self.memory.add(Message(role=Role.USER, content=f"Question: {user_query}"))
+        tool_executed = False
 
         for iteration in range(self.max_iterations):
             logger.info("--- Iteration %s ---", iteration + 1)
             llm_response = self._live_llm_call(self.memory.get_context())
             self.memory.add(Message(role=Role.ASSISTANT, content=llm_response))
 
-            if "Final Answer:" in llm_response:
-                return llm_response.rsplit("Final Answer:", 1)[1].strip()
-
             action_match = re.search(r"^Action:\s*(.+?)\s*$", llm_response, re.MULTILINE)
             input_match = re.search(r"^Action Input:\s*(.+?)\s*$", llm_response, re.MULTILINE)
-            if not (action_match and input_match):
+            if action_match and input_match:
+                action_name, action_input = action_match.group(1), input_match.group(1)
+                if action_name in self.tools:
+                    observation = self.tools[action_name].execute(action_input)
+                    tool_executed = True
+                else:
+                    observation = f"Tool '{action_name}' not found. Choose from: {', '.join(self.tools)}"
+                self.memory.add(Message(role=Role.USER, content=f"Observation: {observation}"))
+
+                # A final answer generated before the observation is not verified.
+                if "Final Answer:" in llm_response:
+                    self.memory.add(Message(
+                        role=Role.USER,
+                        content="Use the tool observation above to provide the verified final answer.",
+                    ))
+                continue
+
+            if "Final Answer:" in llm_response:
+                if not self.tools or tool_executed:
+                    return llm_response.rsplit("Final Answer:", 1)[1].strip()
+
+                logger.warning("Rejected final answer; no tool has been executed.")
                 self.memory.add(Message(
                     role=Role.USER,
-                    content="Observation: Your output must include Thought, Action, and Action Input.",
+                    content=(
+                        "System: You answered directly without executing an available tool. "
+                        "Please execute the required tool first."
+                    ),
                 ))
                 continue
 
-            action_name, action_input = action_match.group(1), input_match.group(1)
-            if action_name in self.tools:
-                observation = self.tools[action_name].execute(action_input)
-            else:
-                observation = f"Tool '{action_name}' not found. Choose from: {', '.join(self.tools)}"
-            self.memory.add(Message(role=Role.USER, content=f"Observation: {observation}"))
+            self.memory.add(Message(
+                role=Role.USER,
+                content="Observation: Your output must include Thought, Action, and Action Input.",
+            ))
 
         return "Max iterations reached without finding a final answer."
 
