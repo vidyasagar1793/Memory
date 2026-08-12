@@ -1,12 +1,11 @@
 # planner.py
 import json
 import logging
-import os
 
 from typing import List
 
-from huggingface_hub import InferenceClient
 from agent import Tool
+from llm_client import LLMClientError, call_llm
 from planner_models import TaskPlan, SubTask, StepStatus
 
 logger = logging.getLogger("Planner")
@@ -35,23 +34,31 @@ Do NOT wrap the output in markdown codeblocks (no ```json). Output raw JSON only
 """
 
 class Planner:
-    def __init__(self, tools: List[Tool], max_iterations: int = 5, model: str = "meta-llama/Llama-3.3-70B-Instruct"):
+    def __init__(
+        self,
+        tools: List[Tool],
+        max_iterations: int = 5,
+        model: str = "meta-llama/Llama-3.3-70B-Instruct",
+        provider: str = "huggingface",
+    ):
         self.tools = {tool.name: tool for tool in tools}
         self.max_iterations = max_iterations
         self.model = model
-        hf_token = os.getenv("HF_TOKEN")
-        self.client = InferenceClient(api_key=hf_token)
+        self.provider = provider
 
     def generate_plan(self, goal: str) -> TaskPlan:
         logger.info(f"Generating step-by-step plan for goal: '{goal}'")
         tool_desc = "\n".join([f"- {t.name}: {t.description}" for t in self.tools.values()])
         
         prompt = PLANNER_PROMPT.format(tool_descriptions=tool_desc, goal=goal)
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw_text = (response.choices[0].message.content or "").strip()
+        try:
+            raw_text = call_llm(prompt, provider=self.provider, model=self.model)
+        except LLMClientError as error:
+            logger.error("Failed to generate plan: %s", error)
+            return TaskPlan(
+                goal=goal,
+                steps=[SubTask(step_id=1, title="Execute Goal", instruction=goal)],
+            )
         # Clean potential markdown fences if present
         if raw_text.startswith("```"):
             raw_text = raw_text.split("```")[1]

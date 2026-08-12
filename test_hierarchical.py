@@ -5,8 +5,6 @@ from semantic_memory import SemanticMemory
 from hierarchical_architecture import HierarchicalAgentSystem
 
 if __name__ == "__main__":
-    # Ensure GEMINI_API_KEY is configured
-    # os.environ["GEMINI_API_KEY"] = "your_key_here"
 
     # 1. Seed Vector Memory
     mem = SemanticMemory()
@@ -27,7 +25,7 @@ if __name__ == "__main__":
     system = HierarchicalAgentSystem(
         research_tools=[search_tool],
         analysis_tools=[search_tool],
-        provider="gemini"
+        provider="groq"  # Change to "gemini" or "huggingface" as needed
     )
 
     # 4. Execute complex goal

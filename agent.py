@@ -2,13 +2,11 @@
 
 import ast
 import logging
-import os
 import re
 from typing import Callable, List
 
-from huggingface_hub import InferenceClient
-
 from core_models import Message, Role
+from llm_client import LLMClientError, call_llm
 from memory import ShortTermMemory
 
 logger = logging.getLogger("ReActAgent")
@@ -87,13 +85,18 @@ def calculator(expression: str) -> int | float:
 
 
 class ReActAgent:
-    def __init__(self, tools: List[Tool], max_iterations: int = 5, model: str = "meta-llama/Llama-3.3-70B-Instruct"):
+    def __init__(
+        self,
+        tools: List[Tool],
+        max_iterations: int = 5,
+        provider: str = "groq",
+        model: str = "llama-3.3-70b-versatile",
+    ):
         self.tools = {tool.name: tool for tool in tools}
         self.max_iterations = max_iterations
+        self.provider = provider
         self.model = model
-        hf_token = os.getenv("HF_TOKEN")
         self.memory = ShortTermMemory(max_tokens=3000)
-        self.client = InferenceClient(api_key=hf_token)
 
         tool_desc = "\n".join(f"- {tool.name}: {tool.description}" for tool in tools)
         self.system_content = REACT_SYSTEM_PROMPT.format(
@@ -104,9 +107,8 @@ class ReActAgent:
 
     def _live_llm_call(self, context: List[dict]) -> str:
         try:
-            response = self.client.chat.completions.create(model=self.model, messages=context)
-            return response.choices[0].message.content or ""
-        except Exception as error:
+            return call_llm(messages=context, provider=self.provider, model=self.model)
+        except LLMClientError as error:
             logger.exception("LLM call failed")
             return f"Thought: The language-model call failed.\nFinal Answer: {error}"
 
