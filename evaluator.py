@@ -2,7 +2,7 @@
 import json
 import logging
 from pydantic import BaseModel, Field
-from llm_client import call_llm, LLMProviderException
+from llm_client import LLMClientError, call_llm
 
 logger = logging.getLogger("Evaluator")
 
@@ -49,7 +49,7 @@ class Evaluator:
 
             data = json.loads(response_text)
             return EvaluationResult(**data)
-        except (LLMProviderException, json.JSONDecodeError) as e:
+        except (LLMClientError, json.JSONDecodeError, ValueError) as e:
             logger.error(f"Evaluator check failed: {e}")
             # STRICT SAFETY FIX: Fail the step if evaluation cannot be performed
             return EvaluationResult(
