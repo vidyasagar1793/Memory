@@ -14,7 +14,6 @@ Memory/
 └── README.md
 ```
 
-The detailed concept run is written to `docs/concept_execution.log`.
 
 Set the provider and credentials in `.env`. For Ollama Cloud:
 
