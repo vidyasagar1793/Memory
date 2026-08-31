@@ -3,9 +3,9 @@ import json
 import logging
 from typing import List, Dict
 from pydantic import BaseModel, Field
-from agent import Tool
-from agent import ReActAgent
-from llm_client import call_llm
+from .agent import Tool
+from .agent import ReActAgent
+from .llm_client import call_llm
 
 logger = logging.getLogger("HierarchicalPlanner")
 
@@ -39,7 +39,7 @@ Respond strictly in JSON matching this schema:
 """
 
 class HierarchicalAgentSystem:
-    def __init__(self, research_tools: List[Tool], analysis_tools: List[Tool], provider: str = "groq"):
+    def __init__(self, research_tools: List[Tool], analysis_tools: List[Tool], provider: str | None = None):
         self.provider = provider
         print(f"HierarchicalAgentSystem initialized with provider: {self.provider}")
         # Specialized Worker Agents with restricted toolsets

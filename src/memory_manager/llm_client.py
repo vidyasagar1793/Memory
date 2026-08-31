@@ -6,6 +6,20 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+# Single source of truth for the default provider used by every LLM call.
+# Set LLM_PROVIDER in .env or override it at runtime with set_llm_provider().
+load_dotenv()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
+
+
+def set_llm_provider(provider: str) -> None:
+    """Set the process-wide default provider for subsequent LLM calls."""
+
+    global LLM_PROVIDER
+    if not provider or not provider.strip():
+        raise ValueError("provider must be a non-empty string")
+    LLM_PROVIDER = provider.strip().lower()
+
 
 class LLMClientError(RuntimeError):
     """Raised when a configured LLM provider cannot complete a request."""
@@ -37,7 +51,7 @@ def call_llm(
     prompt: str | None = None,
     *,
     messages: Sequence[dict[str, Any]] | None = None,
-    provider: str = "gemini",
+    provider: str | None = None,
     model: str | None = None,
     max_tokens: int = 1500,
     temperature: float = 0.1,
@@ -50,7 +64,7 @@ def call_llm(
     """
     load_dotenv()
     normalised_messages = _normalise_messages(prompt, messages)
-    provider_key = provider.lower()
+    provider_key = (provider or LLM_PROVIDER).lower()
 
     if provider_key == "gemini":
         api_key = os.getenv("GEMINI_API_KEY")
@@ -114,15 +128,51 @@ def call_llm(
                 temperature=temperature,
 )
         text = (response.choices[0].message.content or "").strip()
- 
+    elif provider_key == "ollama":
+        print("Using Ollama provider for LLM calls.")
+        selected_model = os.getenv("OLLAMA_MODEL", "gpt-oss:120b")
+        ollama_host = os.getenv("OLLAMA_HOST", "https://ollama.com")
+        try:
+            from ollama import Client
+
+            # Ollama Cloud uses bearer authentication. Local Ollama can still
+            # be used by setting OLLAMA_HOST to localhost; it does not require
+            # an API key.
+            ollama_api_key = os.getenv("OLLAMA_API_KEY")
+            client_options = {}
+            if ollama_api_key:
+                client_options["headers"] = {
+                    "Authorization": f"Bearer {ollama_api_key}"
+                }
+            elif "ollama.com" in ollama_host:
+                raise LLMClientError(
+                    "OLLAMA_API_KEY is required when OLLAMA_HOST points to Ollama Cloud."
+                )
+
+            client = Client(host=ollama_host, **client_options)
+            response = client.chat(
+                model=selected_model,
+                messages=normalised_messages,
+                options={
+                    "num_predict": max_tokens,
+                    "temperature": temperature,
+                },
+            )
+            text = (response.message.content or "").strip()
+        except Exception as error:
+            raise LLMClientError(
+                f"Ollama request failed for model '{selected_model}' at "
+                f"'{ollama_host}': {error}"
+            ) from error
+     
     else:
-        raise ValueError(f"Unsupported LLM provider: {provider!r}")
+        raise ValueError(f"Unsupported LLM provider: {provider_key!r}")
 
     if not text:
         raise LLMClientError(f"{provider_key} returned an empty response.")
     return text
 
 
-def call_llama(prompt: str, json_mode: bool = False, provider: str = "llama") -> str:
+def call_llama(prompt: str, json_mode: bool = False, provider: str | None = None) -> str:
     """Backward-compatible alias for older callers."""
     return call_llm(prompt, provider=provider)

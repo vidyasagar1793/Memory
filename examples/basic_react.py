@@ -1,7 +1,6 @@
 # main.py
-from agent import Tool
-from agent import ReActAgent
-from semantic_memory import SemanticMemory
+from memory_manager.agent import Tool, ReActAgent
+from memory_manager.semantic_memory import SemanticMemory
 
 if __name__ == "__main__":
     # 1. Initialize our new Long-Term Memory

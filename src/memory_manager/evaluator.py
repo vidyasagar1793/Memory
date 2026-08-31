@@ -2,7 +2,7 @@
 import json
 import logging
 from pydantic import BaseModel, Field
-from llm_client import LLMClientError, call_llm
+from .llm_client import LLMClientError, call_llm
 
 logger = logging.getLogger("Evaluator")
 
@@ -24,7 +24,7 @@ Respond strictly in JSON matching this schema:
 """
 
 class Evaluator:
-    def __init__(self, provider: str = "gemini"):
+    def __init__(self, provider: str | None = None):
         self.provider = provider
 
     def evaluate_step(self, instruction: str, result: str) -> EvaluationResult:

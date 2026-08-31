@@ -1,10 +1,9 @@
 # main_episodic_demo.py
 import logging
 import uuid
-from agent import Tool
-from agent import ReActAgent
-from semantic_memory import SemanticMemory
-from episodic_memory import EpisodicMemory
+from memory_manager.agent import Tool, ReActAgent
+from memory_manager.semantic_memory import SemanticMemory
+from memory_manager.episodic_memory import EpisodicMemory
 
     
 logging.basicConfig(level=logging.INFO)

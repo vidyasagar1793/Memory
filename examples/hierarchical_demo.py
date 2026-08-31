@@ -1,8 +1,8 @@
 # test_hierarchical.py
 import os
-from agent import Tool
-from semantic_memory import SemanticMemory
-from hierarchical_architecture import HierarchicalAgentSystem
+from memory_manager.agent import Tool
+from memory_manager.semantic_memory import SemanticMemory
+from memory_manager.hierarchical_architecture import HierarchicalAgentSystem
 
 if __name__ == "__main__":
 

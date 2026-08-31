@@ -4,9 +4,9 @@ import logging
 
 from typing import List
 
-from agent import Tool
-from llm_client import LLMClientError, call_llm
-from planner_models import TaskPlan, SubTask, StepStatus
+from .agent import Tool
+from .llm_client import LLMClientError, call_llm
+from .planner_models import TaskPlan, SubTask, StepStatus
 
 logger = logging.getLogger("Planner")
 
@@ -38,8 +38,8 @@ class Planner:
         self,
         tools: List[Tool],
         max_iterations: int = 5,
-        model: str = "meta-llama/Llama-3.3-70B-Instruct",
-        provider: str = "huggingface",
+        model: str = None,
+        provider: str | None = None,
     ):
         self.tools = {tool.name: tool for tool in tools}
         self.max_iterations = max_iterations

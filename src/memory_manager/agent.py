@@ -5,9 +5,9 @@ import logging
 import re
 from typing import Callable, List
 
-from core_models import Message, Role
-from llm_client import LLMClientError, call_llm
-from memory import ShortTermMemory
+from .core_models import Message, Role
+from .llm_client import LLMClientError, call_llm
+from .memory import ShortTermMemory
 
 logger = logging.getLogger("ReActAgent")
 
@@ -89,7 +89,7 @@ class ReActAgent:
         self,
         tools: List[Tool],
         max_iterations: int = 5,
-        provider: str = "groq",
+        provider: str | None = None,
         model: str = "llama-3.3-70b-versatile",
     ):
         self.tools = {tool.name: tool for tool in tools}

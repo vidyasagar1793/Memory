@@ -1,7 +1,7 @@
 # test_planning.py
-from agent import Tool
-from semantic_memory import SemanticMemory
-from plan_executor2 import PlanExecutor
+from memory_manager.agent import Tool
+from memory_manager.semantic_memory import SemanticMemory
+from memory_manager.plan_executor2 import PlanExecutor
 
 if __name__ == "__main__":
     # Seed semantic memory with data

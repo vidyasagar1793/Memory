@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memory-state-manager"
+version = "0.1.0"
+description = "Memory and state management components for agent workflows"
+requires-python = ">=3.10"
+dependencies = [
+    "chromadb",
+    "google-genai",
+    "groq",
+    "huggingface-hub",
+    "ollama",
+    "pandas",
+    "pydantic",
+    "python-dotenv",
+    "streamlit",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

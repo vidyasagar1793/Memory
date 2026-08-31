@@ -1,7 +1,7 @@
 # memory.py
 import logging
 from typing import List
-from core_models import Message, Role
+from .core_models import Message, Role
 
 # Setup logging for tracing our agent's inner workings
 logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
